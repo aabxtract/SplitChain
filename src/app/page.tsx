@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -7,6 +8,7 @@ import WalletConnect from '@/components/WalletConnect';
 import FundDispersalForm from '@/components/FundDispersalForm';
 import TransactionHistory from '@/components/TransactionHistory';
 import Logo from '@/components/Logo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>(DUMMY_TRANSACTIONS);
@@ -23,7 +25,10 @@ export default function Home() {
             <Logo />
             <h1 className="text-xl font-bold tracking-tighter text-foreground">Splitchain</h1>
           </div>
-          <WalletConnect />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <WalletConnect />
+          </div>
         </div>
       </header>
 
