@@ -7,44 +7,45 @@ type SendFundsResult = {
   success: boolean;
   isRisk?: boolean;
   assessment?: string;
-  transaction?: Transaction;
+  transactions?: Transaction[];
   error?: string;
 };
 
 export async function sendFunds(
-  data: TransactionRiskInput,
+  data: TransactionRiskInput[],
   bypassRiskCheck = false
 ): Promise<SendFundsResult> {
   try {
     if (!bypassRiskCheck) {
-      const riskAssessment = await assessTransactionRisk(data);
-
-      if (!riskAssessment.isSafe) {
-        return {
-          success: false,
-          isRisk: true,
-          assessment: riskAssessment.riskAssessment,
-        };
+      for (const recipientData of data) {
+        const riskAssessment = await assessTransactionRisk(recipientData);
+        if (!riskAssessment.isSafe) {
+          return {
+            success: false,
+            isRisk: true,
+            assessment: `Transaction to ${recipientData.recipientAddress} flagged as risky: ${riskAssessment.riskAssessment}`,
+          };
+        }
       }
     }
 
-    // Simulate sending funds (e.g., calling a Firebase function or interacting with a smart contract)
+    // Simulate sending funds
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // This would be a real transaction hash from the blockchain
-    const mockTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-
-    const newTransaction: Transaction = {
-      recipient: data.recipientAddress,
-      amount: data.amount,
-      currency: 'ETH', // For now, we assume ETH. Could be extended to support USDC via form input.
-      timestamp: new Date(),
-      txHash: mockTxHash,
-    };
+    const newTransactions: Transaction[] = data.map(recipientData => {
+      const mockTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      return {
+        recipient: recipientData.recipientAddress,
+        amount: recipientData.amount,
+        currency: 'ETH', // For now, we assume ETH.
+        timestamp: new Date(),
+        txHash: mockTxHash,
+      };
+    });
 
     return {
       success: true,
-      transaction: newTransaction,
+      transactions: newTransactions,
     };
   } catch (error) {
     console.error('Error sending funds:', error);

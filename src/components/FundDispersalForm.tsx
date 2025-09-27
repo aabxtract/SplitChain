@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { sendFunds } from '@/app/actions';
@@ -22,9 +22,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, AlertTriangle, PlusCircle, XCircle } from 'lucide-react';
 
-const formSchema = z.object({
+const recipientSchema = z.object({
   recipientAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
     message: "Please enter a valid Ethereum wallet address.",
   }),
@@ -33,13 +33,17 @@ const formSchema = z.object({
   }),
 });
 
+const formSchema = z.object({
+  recipients: z.array(recipientSchema).min(1, "You must add at least one recipient."),
+});
+
 type FundDispersalFormValues = z.infer<typeof formSchema>;
 
 interface FundDispersalFormProps {
-  onTransactionAdded: (transaction: Transaction) => void;
+  onTransactionsAdded: (transactions: Transaction[]) => void;
 }
 
-export default function FundDispersalForm({ onTransactionAdded }: FundDispersalFormProps) {
+export default function FundDispersalForm({ onTransactionsAdded }: FundDispersalFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [riskData, setRiskData] = useState<{ assessment: string; values: FundDispersalFormValues } | null>(null);
@@ -47,22 +51,29 @@ export default function FundDispersalForm({ onTransactionAdded }: FundDispersalF
   const form = useForm<FundDispersalFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      recipientAddress: '',
-      amount: 0,
+      recipients: [{ recipientAddress: '', amount: 0 }],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "recipients"
   });
 
   const onSubmit = (values: FundDispersalFormValues) => {
     startTransition(async () => {
-      const result = await sendFunds({ ...values, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }); // userAddress is mocked
+      const recipientData = values.recipients.map(r => ({ ...r, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }));
+      const result = await sendFunds(recipientData);
       
-      if (result.success && result.transaction) {
-        onTransactionAdded(result.transaction);
+      if (result.success && result.transactions) {
+        onTransactionsAdded(result.transactions);
         toast({
           title: "Success!",
-          description: "Funds have been sent.",
+          description: "All funds have been sent.",
         });
         form.reset();
+        remove();
+        append({ recipientAddress: '', amount: 0 });
       } else if (result.isRisk && result.assessment) {
         setRiskData({ assessment: result.assessment, values });
       } else {
@@ -79,14 +90,17 @@ export default function FundDispersalForm({ onTransactionAdded }: FundDispersalF
     if (!riskData) return;
     
     startTransition(async () => {
-      const result = await sendFunds({ ...riskData.values, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }, true); // Bypass risk check
-      if (result.success && result.transaction) {
-        onTransactionAdded(result.transaction);
+      const recipientData = riskData.values.recipients.map(r => ({ ...r, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }));
+      const result = await sendFunds(recipientData, true); // Bypass risk check
+      if (result.success && result.transactions) {
+        onTransactionsAdded(result.transactions);
         toast({
           title: "Success!",
           description: "Funds sent despite the risk.",
         });
         form.reset();
+        remove();
+        append({ recipientAddress: '', amount: 0 });
       } else {
         toast({
           variant: "destructive",
@@ -103,37 +117,62 @@ export default function FundDispersalForm({ onTransactionAdded }: FundDispersalF
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Disperse Funds</CardTitle>
-          <CardDescription>Enter recipient details and amount to send.</CardDescription>
+          <CardDescription>Enter recipient details and amount to send. You can add multiple recipients.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="recipientAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Recipient Wallet Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="0x..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Amount (ETH/USDC)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0.1" {...field} step="0.01" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <CardContent className="space-y-6">
+              {fields.map((field, index) => (
+                <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
+                  {fields.length > 1 && (
+                     <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-6 w-6 text-muted-foreground hover:text-destructive"
+                      onClick={() => remove(index)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span className="sr-only">Remove recipient</span>
+                    </Button>
+                  )}
+                  <FormField
+                    control={form.control}
+                    name={`recipients.${index}.recipientAddress`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Recipient Wallet Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="0x..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`recipients.${index}.amount`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount (ETH/USDC)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="0.1" {...field} step="0.01" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ))}
+               <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => append({ recipientAddress: '', amount: 0 })}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Recipient
+              </Button>
             </CardContent>
             <CardFooter>
               <Button type="submit" disabled={isPending} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
@@ -142,7 +181,7 @@ export default function FundDispersalForm({ onTransactionAdded }: FundDispersalF
                 ) : (
                   <Send className="mr-2 h-4 w-4" />
                 )}
-                Send Funds
+                Send to {form.getValues('recipients').length} recipient(s)
               </Button>
             </CardFooter>
           </form>

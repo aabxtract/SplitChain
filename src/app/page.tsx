@@ -11,8 +11,8 @@ import Logo from '@/components/Logo';
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>(DUMMY_TRANSACTIONS);
 
-  const addTransaction = (newTransaction: Transaction) => {
-    setTransactions(prev => [newTransaction, ...prev]);
+  const addTransactions = (newTransactions: Transaction[]) => {
+    setTransactions(prev => [...newTransactions, ...prev]);
   };
 
   return (
@@ -31,7 +31,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8 md:px-6 md:py-12">
           <div className="grid gap-12 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <FundDispersalForm onTransactionAdded={addTransaction} />
+              <FundDispersalForm onTransactionsAdded={addTransactions} />
             </div>
             <div className="lg:col-span-3">
               <TransactionHistory transactions={transactions} />
