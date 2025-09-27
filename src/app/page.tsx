@@ -21,7 +21,7 @@ export default function Home() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-4">
             <Logo />
-            <h1 className="text-xl font-bold tracking-tighter text-foreground">Web3 Disperser</h1>
+            <h1 className="text-xl font-bold tracking-tighter text-foreground">Splitchain</h1>
           </div>
           <WalletConnect />
         </div>
@@ -42,7 +42,7 @@ export default function Home() {
 
       <footer className="py-6 border-t bg-card">
         <div className="container mx-auto px-4 md:px-6 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Web3 Disperser. All rights reserved.
+          © {new Date().getFullYear()} Splitchain. All rights reserved.
         </div>
       </footer>
     </div>

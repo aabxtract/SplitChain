@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Web3 Disperser',
-  description: 'A Next.js frontend app for a Web3 Fund Disperser.',
+  title: 'Splitchain',
+  description: 'A Next.js frontend app for Splitchain.',
 };
 
 export default function RootLayout({
