@@ -12,6 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -24,13 +31,18 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Send, AlertTriangle, PlusCircle, XCircle } from 'lucide-react';
 
+// Updated schema to accept ENS names
 const recipientSchema = z.object({
-  recipientAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
-    message: "Please enter a valid Ethereum wallet address.",
-  }),
+  recipientAddress: z.string().refine(value => 
+    /^0x[a-fA-F0-9]{40}$/.test(value) || /^[a-zA-Z0-9-]+\.eth$/.test(value), 
+    {
+      message: "Please enter a valid Ethereum address or ENS name.",
+    }
+  ),
   amount: z.coerce.number().positive({
     message: "Amount must be a positive number.",
   }),
+  currency: z.enum(['ETH', 'USDC']),
 });
 
 const formSchema = z.object({
@@ -51,7 +63,7 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
   const form = useForm<FundDispersalFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      recipients: [{ recipientAddress: '', amount: 0 }],
+      recipients: [{ recipientAddress: '', amount: 0, currency: 'ETH' }],
     },
   });
 
@@ -62,8 +74,7 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
 
   const onSubmit = (values: FundDispersalFormValues) => {
     startTransition(async () => {
-      const recipientData = values.recipients.map(r => ({ ...r, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }));
-      const result = await sendFunds(recipientData);
+      const result = await sendFunds(values.recipients);
       
       if (result.success && result.transactions) {
         onTransactionsAdded(result.transactions);
@@ -73,7 +84,7 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
         });
         form.reset();
         remove();
-        append({ recipientAddress: '', amount: 0 });
+        append({ recipientAddress: '', amount: 0, currency: 'ETH' });
       } else if (result.isRisk && result.assessment) {
         setRiskData({ assessment: result.assessment, values });
       } else {
@@ -90,8 +101,7 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
     if (!riskData) return;
     
     startTransition(async () => {
-      const recipientData = riskData.values.recipients.map(r => ({ ...r, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }));
-      const result = await sendFunds(recipientData, true); // Bypass risk check
+      const result = await sendFunds(riskData.values.recipients, true); // Bypass risk check
       if (result.success && result.transactions) {
         onTransactionsAdded(result.transactions);
         toast({
@@ -100,7 +110,7 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
         });
         form.reset();
         remove();
-        append({ recipientAddress: '', amount: 0 });
+        append({ recipientAddress: '', amount: 0, currency: 'ETH' });
       } else {
         toast({
           variant: "destructive",
@@ -141,34 +151,57 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
                     name={`recipients.${index}.recipientAddress`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Recipient Wallet Address</FormLabel>
+                        <FormLabel>Recipient Wallet Address or ENS</FormLabel>
                         <FormControl>
-                          <Input placeholder="0x..." {...field} />
+                          <Input placeholder="0x... or vitalik.eth" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name={`recipients.${index}.amount`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amount (ETH/USDC)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0.1" {...field} step="0.01" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="flex items-start gap-2">
+                    <FormField
+                      control={form.control}
+                      name={`recipients.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Amount</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0.1" {...field} step="0.01" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`recipients.${index}.currency`}
+                      render={({ field }) => (
+                        <FormItem className="w-[100px]">
+                          <FormLabel>Currency</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select currency" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="ETH">ETH</SelectItem>
+                                <SelectItem value="USDC">USDC</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               ))}
                <Button
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => append({ recipientAddress: '', amount: 0 })}
+                onClick={() => append({ recipientAddress: '', amount: 0, currency: 'ETH' })}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Recipient
