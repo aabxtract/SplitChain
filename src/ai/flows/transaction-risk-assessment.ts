@@ -13,7 +13,8 @@ import {z} from 'genkit';
 
 const TransactionRiskInputSchema = z.object({
   recipientAddress: z.string().describe('The recipient wallet address.'),
-  amount: z.number().describe('The amount of funds to be sent (ETH/USDC).'),
+  amount: z.number().describe('The amount of funds to be sent.'),
+  currency: z.string().describe('The currency of the transaction (e.g., ETH, USDC).'),
   userAddress: z.string().describe('The user wallet address.'),
 });
 export type TransactionRiskInput = z.infer<typeof TransactionRiskInputSchema>;
@@ -43,7 +44,7 @@ const assessTransactionRiskPrompt = ai.definePrompt({
   Analyze the following transaction details to determine if the transaction is potentially malicious or erroneous.
 
   Recipient Address: {{{recipientAddress}}}
-  Amount: {{{amount}}}
+  Amount: {{{amount}}} {{{currency}}}
   User Address: {{{userAddress}}}
 
   Provide a risk assessment and indicate whether the transaction is considered safe.
