@@ -1,5 +1,1 @@
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+SplitChain is a web3 app that uses dispersion method in sharing funds from one wallet to different wallents at th same time 
