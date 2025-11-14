@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Transaction } from '@/lib/types';
 import { DUMMY_TRANSACTIONS } from '@/lib/dummy-data';
 import WalletConnect from '@/components/WalletConnect';
@@ -11,7 +10,18 @@ import Logo from '@/components/Logo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Home() {
-  const [transactions, setTransactions] = useState<Transaction[]>(DUMMY_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate fetching initial data
+    const timer = setTimeout(() => {
+      setTransactions(DUMMY_TRANSACTIONS);
+      setIsHistoryLoading(false);
+    }, 1500); // 1.5-second delay
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const addTransactions = (newTransactions: Transaction[]) => {
     setTransactions(prev => [...newTransactions, ...prev]);
@@ -39,7 +49,7 @@ export default function Home() {
               <FundDispersalForm onTransactionsAdded={addTransactions} />
             </div>
             <div className="lg:col-span-3">
-              <TransactionHistory transactions={transactions} />
+              <TransactionHistory transactions={transactions} isLoading={isHistoryLoading} />
             </div>
           </div>
         </div>
