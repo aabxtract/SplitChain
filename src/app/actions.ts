@@ -1,7 +1,16 @@
 "use server";
 
 import { assessTransactionRisk, type TransactionRiskInput } from '@/ai/flows/transaction-risk-assessment';
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Currency } from '@/lib/types';
+
+type SendFundsData = {
+  recipients: {
+    recipientAddress: string;
+    amount: number;
+  }[];
+  currency: Currency;
+  userAddress: `0x${string}`;
+}
 
 type SendFundsResult = {
   success: boolean;
@@ -12,13 +21,19 @@ type SendFundsResult = {
 };
 
 export async function sendFunds(
-  data: TransactionRiskInput[],
+  data: SendFundsData,
   bypassRiskCheck = false
 ): Promise<SendFundsResult> {
   try {
+    const { recipients, currency, userAddress } = data;
+
     if (!bypassRiskCheck) {
-      for (const recipientData of data) {
-        const riskAssessment = await assessTransactionRisk(recipientData);
+      for (const recipientData of recipients) {
+        const riskInput: TransactionRiskInput = {
+          ...recipientData,
+          userAddress,
+        }
+        const riskAssessment = await assessTransactionRisk(riskInput);
         if (!riskAssessment.isSafe) {
           return {
             success: false,
@@ -32,12 +47,12 @@ export async function sendFunds(
     // Simulate sending funds
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const newTransactions: Transaction[] = data.map(recipientData => {
+    const newTransactions: Transaction[] = recipients.map(recipientData => {
       const mockTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
       return {
         recipient: recipientData.recipientAddress,
         amount: recipientData.amount,
-        currency: 'ETH', // For now, we assume ETH.
+        currency: currency,
         timestamp: new Date(),
         txHash: mockTxHash,
       };

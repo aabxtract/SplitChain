@@ -5,13 +5,14 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { sendFunds } from '@/app/actions';
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Currency } from '@/lib/types';
 import { useAccount } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,7 @@ const recipientSchema = z.object({
 });
 
 const formSchema = z.object({
+  currency: z.enum(['ETH', 'ZORA', 'USDC', 'USDT']),
   recipients: z.array(recipientSchema).min(1, "You must add at least one recipient."),
 });
 
@@ -55,6 +57,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
   const form = useForm<FundDispersalFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      currency: 'ETH',
       recipients: [{ recipientAddress: '', amount: 0 }],
     },
   });
@@ -67,8 +70,8 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
   const onSubmit = (values: FundDispersalFormValues) => {
     if (!userAddress) return;
     startTransition(async () => {
-      const recipientData = values.recipients.map(r => ({ ...r, userAddress }));
-      const result = await sendFunds(recipientData);
+      const payload = { ...values, userAddress };
+      const result = await sendFunds(payload);
       
       if (result.success && result.transactions) {
         onTransactionsAdded(result.transactions);
@@ -95,8 +98,8 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
     if (!riskData || !userAddress) return;
     
     startTransition(async () => {
-      const recipientData = riskData.values.recipients.map(r => ({ ...r, userAddress }));
-      const result = await sendFunds(recipientData, true); // Bypass risk check
+      const payload = { ...riskData.values, userAddress };
+      const result = await sendFunds(payload, true); // Bypass risk check
       if (result.success && result.transactions) {
         onTransactionsAdded(result.transactions);
         toast({
@@ -122,7 +125,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Disperse Funds</CardTitle>
-          <CardDescription>Enter recipient details and amount to send. You can add multiple recipients.</CardDescription>
+          <CardDescription>Select a token and enter recipient details. You can add multiple recipients.</CardDescription>
         </CardHeader>
         {!isConnected ? (
           <CardContent>
@@ -137,6 +140,30 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardContent className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Token</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a token" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ETH">ETH</SelectItem>
+                          <SelectItem value="ZORA">ZORA</SelectItem>
+                          <SelectItem value="USDC">USDC</SelectItem>
+                          <SelectItem value="USDT">USDT</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 {fields.map((field, index) => (
                   <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
                     {fields.length > 1 && (
@@ -169,7 +196,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
                       name={`recipients.${index}.amount`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Amount (ETH/USDC)</FormLabel>
+                          <FormLabel>Amount</FormLabel>
                           <FormControl>
                             <Input type="number" placeholder="0.1" {...field} step="0.01" />
                           </FormControl>

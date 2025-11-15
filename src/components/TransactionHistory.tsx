@@ -1,6 +1,6 @@
 "use client";
 
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Currency } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Card,
@@ -22,6 +22,19 @@ import { Badge } from '@/components/ui/badge';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
+}
+
+const getBadgeVariant = (currency: Currency) => {
+  switch (currency) {
+    case 'ETH':
+    case 'ZORA':
+      return 'secondary';
+    case 'USDC':
+    case 'USDT':
+      return 'default';
+    default:
+      return 'outline';
+  }
 }
 
 export default function TransactionHistory({ transactions }: TransactionHistoryProps) {
@@ -53,7 +66,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                     </TableCell>
                     <TableCell className="text-right">
                       {tx.amount}{' '}
-                      <Badge variant={tx.currency === 'ETH' ? 'secondary' : 'default'} className="ml-1">{tx.currency}</Badge>
+                      <Badge variant={getBadgeVariant(tx.currency)} className="ml-1">{tx.currency}</Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-right">
                       {formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true })}
