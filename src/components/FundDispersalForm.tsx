@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Send, AlertTriangle, PlusCircle, XCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const recipientSchema = z.object({
   recipientAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
@@ -76,8 +76,8 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
       if (result.success && result.transactions) {
         onTransactionsAdded(result.transactions);
         toast({
-          title: "Success!",
-          description: "All funds have been sent.",
+          title: "Funds Dispersed",
+          description: "All transactions have been successfully broadcasted.",
         });
         form.reset();
         remove();
@@ -87,8 +87,8 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: result.error || "Failed to send funds.",
+          title: "Transaction Failed",
+          description: result.error || "An unknown error occurred while sending funds.",
         });
       }
     });
@@ -103,8 +103,8 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
       if (result.success && result.transactions) {
         onTransactionsAdded(result.transactions);
         toast({
-          title: "Success!",
-          description: "Funds sent despite the risk.",
+          title: "Funds Dispersed",
+          description: "Transactions sent successfully despite the risk.",
         });
         form.reset();
         remove();
@@ -112,8 +112,8 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: result.error || "Failed to send funds.",
+          title: "Transaction Failed",
+          description: result.error || "An unknown error occurred while sending funds.",
         });
       }
       setRiskData(null);
@@ -122,15 +122,16 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
 
   return (
     <>
-      <Card className="w-full">
+      <Card className="w-full bg-card/50 border border-white/10 backdrop-blur-sm">
         <CardHeader>
           <CardTitle>Disperse Funds</CardTitle>
-          <CardDescription>Select a token and enter recipient details. You can add multiple recipients.</CardDescription>
+          <CardDescription>Create a batch transaction to multiple recipients.</CardDescription>
         </CardHeader>
         {!isConnected ? (
           <CardContent>
-             <Alert>
-              <AlertTriangle className="h-4 w-4" />
+             <Alert variant="destructive" className="bg-destructive/10 border-destructive/50 text-destructive-foreground">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertTitle>Wallet Not Connected</AlertTitle>
               <AlertDescription>
                 Please connect your wallet to disperse funds.
               </AlertDescription>
@@ -148,7 +149,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
                       <FormLabel>Token</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="bg-input border-white/20">
                             <SelectValue placeholder="Select a token" />
                           </SelectTrigger>
                         </FormControl>
@@ -165,7 +166,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
                 />
 
                 {fields.map((field, index) => (
-                  <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
+                  <div key={field.id} className="space-y-4 p-4 border border-white/10 bg-background/50 rounded-lg relative">
                     {fields.length > 1 && (
                       <Button
                         type="button"
@@ -185,7 +186,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
                         <FormItem>
                           <FormLabel>Recipient Wallet Address</FormLabel>
                           <FormControl>
-                            <Input placeholder="0x..." {...field} />
+                            <Input placeholder="0x..." {...field} className="font-code bg-input border-white/20"/>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -198,7 +199,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
                         <FormItem>
                           <FormLabel>Amount</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="0.1" {...field} step="0.01" />
+                            <Input type="number" placeholder="0.1" {...field} step="any" className="font-code bg-input border-white/20"/>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -209,7 +210,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full"
+                  className="w-full border-dashed border-white/30 hover:border-white/50 hover:bg-primary/10 hover:text-primary"
                   onClick={() => append({ recipientAddress: '', amount: 0 })}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -217,7 +218,7 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
                 </Button>
               </CardContent>
               <CardFooter>
-                <Button type="submit" disabled={isPending || !isConnected} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+                <Button type="submit" disabled={isPending || !isConnected} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/20 transition-all duration-300 hover:shadow-accent/40">
                   {isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -236,12 +237,12 @@ export default function FundDispersalForm({ onTransactionsAdded, userAddress }: 
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="text-destructive" />
-              Risk Detected
+              AI Risk Assessment
             </AlertDialogTitle>
             <AlertDialogDescription>
               {riskData?.assessment || "Our AI has flagged this transaction as potentially risky."}
               <br/><br/>
-              Are you sure you want to proceed?
+              Are you sure you want to proceed with this transaction?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

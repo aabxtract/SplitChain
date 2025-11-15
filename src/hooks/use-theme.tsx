@@ -3,12 +3,15 @@
 
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 
-type Theme = "dark" | "light";
+type Theme = "dark" | "light" | "system";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
+  attribute?: "class";
+  enableSystem?: boolean;
+  disableTransitionOnChange?: boolean;
 };
 
 type ThemeProviderState = {
@@ -17,7 +20,7 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: "light",
+  theme: "system",
   setTheme: () => null,
 };
 
@@ -25,8 +28,11 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  defaultTheme = "light",
+  defaultTheme = "system",
   storageKey = "vite-ui-theme",
+  attribute = "class",
+  enableSystem = true,
+  disableTransitionOnChange = false,
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
@@ -35,10 +41,23 @@ export function ThemeProvider({
 
   useEffect(() => {
     if(typeof window === 'undefined') return;
+    
     const root = window.document.documentElement;
+
     root.classList.remove("light", "dark");
+
+    if (theme === "system" && enableSystem) {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light";
+
+      root.classList.add(systemTheme);
+      return;
+    }
+
     root.classList.add(theme);
-  }, [theme]);
+  }, [theme, enableSystem]);
 
   const value = useMemo(()=>({
     theme,

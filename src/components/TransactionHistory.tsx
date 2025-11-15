@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from '@/components/ui/badge';
+import { ExternalLink } from 'lucide-react';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
@@ -27,11 +28,13 @@ interface TransactionHistoryProps {
 const getBadgeVariant = (currency: Currency) => {
   switch (currency) {
     case 'ETH':
-    case 'ZORA':
       return 'secondary';
+    case 'ZORA':
+        return 'outline';
     case 'USDC':
-    case 'USDT':
       return 'default';
+    case 'USDT':
+        return 'destructive';
     default:
       return 'outline';
   }
@@ -39,16 +42,16 @@ const getBadgeVariant = (currency: Currency) => {
 
 export default function TransactionHistory({ transactions }: TransactionHistoryProps) {
   return (
-    <Card>
+    <Card className="bg-card/50 border border-white/10 backdrop-blur-sm">
       <CardHeader>
         <CardTitle>Transaction History</CardTitle>
         <CardDescription>A list of your recent fund dispersals.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="h-[450px] pr-4 -mr-4">
           <Table>
-            <TableHeader className="sticky top-0 bg-card">
-              <TableRow>
+            <TableHeader className="sticky top-0 bg-card/80 backdrop-blur-sm">
+              <TableRow className="border-b-white/10 hover:bg-transparent">
                 <TableHead>Recipient</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="hidden md:table-cell text-right">Time</TableHead>
@@ -57,25 +60,28 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
             <TableBody>
               {transactions.length > 0 ? (
                 transactions.map((tx) => (
-                  <TableRow key={tx.txHash}>
+                  <TableRow key={tx.txHash} className="border-b-white/10 font-code hover:bg-muted/50">
                     <TableCell>
-                      <div className="font-medium truncate">{`${tx.recipient.substring(0, 6)}...${tx.recipient.substring(tx.recipient.length - 4)}`}</div>
+                      <a href={`https://etherscan.io/address/${tx.recipient}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
+                        <span className="font-medium truncate">{`${tx.recipient.substring(0, 6)}...${tx.recipient.substring(tx.recipient.length - 4)}`}</span>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground"/>
+                      </a>
                       <div className="text-xs text-muted-foreground md:hidden">
                         {formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true })}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {tx.amount}{' '}
-                      <Badge variant={getBadgeVariant(tx.currency)} className="ml-1">{tx.currency}</Badge>
+                      <Badge variant={getBadgeVariant(tx.currency)} className="ml-1 select-none">{tx.currency}</Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-right">
+                    <TableCell className="hidden md:table-cell text-right text-muted-foreground">
                       {formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true })}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                     No transactions yet.
                   </TableCell>
                 </TableRow>

@@ -1,6 +1,8 @@
 
 import type {Config} from 'tailwindcss';
 
+const { fontFamily } = require('tailwindcss/defaultTheme');
+
 export default {
   darkMode: ['class'],
   content: [
@@ -18,9 +20,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Poppins', 'sans-serif'],
-        code: ['monospace'],
+        body: ['Inter', ...fontFamily.sans],
+        headline: ['Poppins', ...fontFamily.sans],
+        code: ['Roboto Mono', ...fontFamily.mono],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -103,5 +105,12 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), function({ addUtilities }) {
+    addUtilities({
+      '.bg-grid-small-white': {
+        backgroundImage: 'linear-gradient(to right, rgba(255, 255, 255, 1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 1) 1px, transparent 1px)',
+        backgroundSize: '10px 10px',
+      }
+    })
+  }],
 } satisfies Config;
