@@ -9,8 +9,10 @@ import FundDispersalForm from '@/components/FundDispersalForm';
 import TransactionHistory from '@/components/TransactionHistory';
 import Logo from '@/components/Logo';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAccount } from 'wagmi';
 
 export default function Home() {
+  const { address } = useAccount();
   const [transactions, setTransactions] = useState<Transaction[]>(DUMMY_TRANSACTIONS);
 
   const addTransactions = (newTransactions: Transaction[]) => {
@@ -25,7 +27,7 @@ export default function Home() {
             <Logo />
             <h1 className="text-xl font-bold tracking-tighter text-foreground">Splitchain</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <ThemeToggle />
             <WalletConnect />
           </div>
@@ -36,7 +38,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8 md:px-6 md:py-12">
           <div className="grid gap-12 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <FundDispersalForm onTransactionsAdded={addTransactions} />
+              <FundDispersalForm onTransactionsAdded={addTransactions} userAddress={address} />
             </div>
             <div className="lg:col-span-3">
               <TransactionHistory transactions={transactions} />

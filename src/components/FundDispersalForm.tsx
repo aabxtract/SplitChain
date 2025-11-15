@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { sendFunds } from '@/app/actions';
 import type { Transaction } from '@/lib/types';
+import { useAccount } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Send, AlertTriangle, PlusCircle, XCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const recipientSchema = z.object({
   recipientAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, {
@@ -41,12 +43,14 @@ type FundDispersalFormValues = z.infer<typeof formSchema>;
 
 interface FundDispersalFormProps {
   onTransactionsAdded: (transactions: Transaction[]) => void;
+  userAddress?: `0x${string}`;
 }
 
-export default function FundDispersalForm({ onTransactionsAdded }: FundDispersalFormProps) {
+export default function FundDispersalForm({ onTransactionsAdded, userAddress }: FundDispersalFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [riskData, setRiskData] = useState<{ assessment: string; values: FundDispersalFormValues } | null>(null);
+  const { isConnected } = useAccount();
 
   const form = useForm<FundDispersalFormValues>({
     resolver: zodResolver(formSchema),
@@ -61,8 +65,9 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
   });
 
   const onSubmit = (values: FundDispersalFormValues) => {
+    if (!userAddress) return;
     startTransition(async () => {
-      const recipientData = values.recipients.map(r => ({ ...r, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }));
+      const recipientData = values.recipients.map(r => ({ ...r, userAddress }));
       const result = await sendFunds(recipientData);
       
       if (result.success && result.transactions) {
@@ -87,10 +92,10 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
   };
 
   const handleProceedWithRisk = () => {
-    if (!riskData) return;
+    if (!riskData || !userAddress) return;
     
     startTransition(async () => {
-      const recipientData = riskData.values.recipients.map(r => ({ ...r, userAddress: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B' }));
+      const recipientData = riskData.values.recipients.map(r => ({ ...r, userAddress }));
       const result = await sendFunds(recipientData, true); // Bypass risk check
       if (result.success && result.transactions) {
         onTransactionsAdded(result.transactions);
@@ -119,73 +124,84 @@ export default function FundDispersalForm({ onTransactionsAdded }: FundDispersal
           <CardTitle>Disperse Funds</CardTitle>
           <CardDescription>Enter recipient details and amount to send. You can add multiple recipients.</CardDescription>
         </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-6">
-              {fields.map((field, index) => (
-                <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
-                  {fields.length > 1 && (
-                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 h-6 w-6 text-muted-foreground hover:text-destructive"
-                      onClick={() => remove(index)}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      <span className="sr-only">Remove recipient</span>
-                    </Button>
+        {!isConnected ? (
+          <CardContent>
+             <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Please connect your wallet to disperse funds.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardContent className="space-y-6">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => remove(index)}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        <span className="sr-only">Remove recipient</span>
+                      </Button>
+                    )}
+                    <FormField
+                      control={form.control}
+                      name={`recipients.${index}.recipientAddress`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Recipient Wallet Address</FormLabel>
+                          <FormControl>
+                            <Input placeholder="0x..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`recipients.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount (ETH/USDC)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0.1" {...field} step="0.01" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => append({ recipientAddress: '', amount: 0 })}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Recipient
+                </Button>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" disabled={isPending || !isConnected} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+                  {isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
                   )}
-                  <FormField
-                    control={form.control}
-                    name={`recipients.${index}.recipientAddress`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Recipient Wallet Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="0x..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`recipients.${index}.amount`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amount (ETH/USDC)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0.1" {...field} step="0.01" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              ))}
-               <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => append({ recipientAddress: '', amount: 0 })}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Recipient
-              </Button>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isPending} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                {isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="mr-2 h-4 w-4" />
-                )}
-                Send to {form.getValues('recipients').length} recipient(s)
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
+                  Send to {form.getValues('recipients').length} recipient(s)
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        )}
       </Card>
       
       <AlertDialog open={!!riskData} onOpenChange={(open) => !open && setRiskData(null)}>
